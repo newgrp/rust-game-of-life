@@ -1,0 +1,10 @@
+[package]
+name = "game_of_life"
+version = "0.1.0"
+authors = ["birdperson-lives <rayradjr@gmail.com>", "Omar Shehata <omar.sameh.shehata@gmail.com>"]
+
+[dependencies]
+piston_window = "0.58.0"
+time = "0.1"
+piston2d-gfx_graphics = "0.33.2"
+rand = "0.3"
