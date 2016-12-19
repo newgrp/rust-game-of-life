@@ -15,6 +15,7 @@ const WINDOW_HEIGHT:u32 = 400;
 
 mod life_sequential;
 mod life_parallel;
+mod hashlife_sequential;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
