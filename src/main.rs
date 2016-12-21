@@ -1,5 +1,3 @@
-#![allow(non_snake_case)]
-
 extern crate piston_window;
 extern crate time;
 extern crate gfx_graphics;
@@ -53,7 +51,7 @@ fn main() {
             // Skip comments 
             if first_char != '!' {
                 //This is a data line 
-                column = 0; //Reset column 
+                
 
                 //Iterate over chars 
                 for c in l.chars() {
@@ -72,6 +70,7 @@ fn main() {
 
                 //Increment row by 1 
                 row += 1;
+                column = 0; //Reset column 
             }
         }
         
@@ -114,7 +113,7 @@ fn main() {
     let mut glyphs = Glyphs::new(font_path, factory).unwrap();
 
     let mut running = true;
-    let mut start_time = 0.0;
+    
     let mut time_taken = 0.0;
 
     let mut mouse_pos:[f64;2] = [0.0,0.0];
@@ -191,7 +190,7 @@ fn main() {
             //Render!
 
             if running {
-                start_time = time::precise_time_ns() as f64;
+                let start_time = time::precise_time_ns() as f64;
                 if mode == "single" {
                     r_pentomino.advance(); 
                 } else {

@@ -258,14 +258,14 @@ impl Life {
         self.generation += 1;
     }
 
-    pub fn draw(&self, window:&mut PistonWindow, e:&Event,zoom:f64,offsetX:f64,offsetY:f64) {
+    pub fn draw(&self, window:&mut PistonWindow, e:&Event,zoom:f64,offset_x:f64,offset_y:f64) {
  
         window.draw_2d(e, |c, g| {
             clear([1.0, 1.0, 1.0, 1.0], g);
  
             let half_width:f64 = (self.window_width as f64)/2.0;
             let half_height:f64 = (self.window_height as f64)/2.0;
-            let transform = c.transform.trans(offsetX,offsetY)
+            let transform = c.transform.trans(offset_x,offset_y)
                                        .trans(half_width,half_height)
                                        .zoom(zoom)
                                        .trans(-half_width,-half_height);
