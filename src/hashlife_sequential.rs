@@ -86,11 +86,60 @@ impl LifeNode {
         }
     }
 
+    /// Returns the alive/dead value of the node at the given coordinates, assuming that the
+    /// southwest corner of the northeast subnode is (0,0). If the coordinates are invalid, then
+    /// the thread panics.
+    pub fn get_value(&self, x: isize, y: isize) -> bool {
+        let bound: isize = (2 as isize) << ((self.level-1) as isize);
+        assert!(x >= -bound);
+        assert!(x < bound);
+        assert!(y >= -bound);
+        assert!(y < bound);
+        if self.level == 0 {
+            self.is_alive()
+        } else if x >= 0 && y >= 0 {
+            self.get_ne().get_value(x+bound/2, y+bound/2)
+        } else if x < 0 && y >= 0 {
+            self.get_nw().get_value(x+bound  , y+bound/2)
+        } else if x < 0 && y < 0 {
+            self.get_sw().get_value(x+bound  , y+bound  )
+        } else {
+            self.get_se().get_value(x+bound/2, y+bound  )
+        }
+    }
+
     /// Returns the Arc corresponding to the given node in hashes or inserts it if it does not
     /// already exist.
     fn do_arc(self, hashes: &mut HashMap<LifeNode, Arc<LifeNode>>) -> Arc<LifeNode> {
         let or_value = Arc::new(self.clone());
         hashes.entry(self).or_insert(or_value).clone()
+    }
+
+    /// Returns true if all the border nodes of self with level self.level-2 are equal to target
+    /// and false otherwise. If self.level < 2, the thread panics.
+    pub fn is_uniform_border(&self,
+                             hashes: &HashMap<LifeNode, Arc<LifeNode>>,
+                             target: Arc<LifeNode>) -> bool {
+        assert!(self.level >= 2);
+        let mut acc = true;
+        for node in vec![self.get_ne().get_se(),
+                         self.get_ne().get_ne(),
+                         self.get_ne().get_nw(),
+                         self.get_nw().get_ne(),
+                         self.get_nw().get_nw(),
+                         self.get_nw().get_sw(),
+                         self.get_sw().get_nw(),
+                         self.get_sw().get_sw(),
+                         self.get_sw().get_se(),
+                         self.get_se().get_sw(),
+                         self.get_se().get_se(),
+                         self.get_se().get_ne()] {
+            acc &= node == target;
+            if !acc {
+                break;
+            }
+        }
+        acc
     }
 
     /// Returns the node representing the centered square inside the current node of half the side
@@ -231,7 +280,120 @@ impl LifeNode {
 }
 
 struct Life {
+    generation: u64,
     hashes: HashMap<LifeNode, Arc<LifeNode>>,
     advanced_centers: HashMap<LifeNode, Arc<LifeNode>>,
+    dead_squares: Vec<Arc<LifeNode>>,
     root: Arc<LifeNode>,
+}
+
+impl Life {
+    /// Returns a new completely dead board. The root node will be level 3.
+    pub fn new() -> Life {
+        let mut hashes_temp: HashMap<LifeNode, Arc<LifeNode>> = HashMap::new();
+        let dead_cell = LifeNode::new(false).do_arc(&mut hashes_temp);
+        let root_temp = LifeNode::with_components(dead_cell.clone(),
+                                                  dead_cell.clone(),
+                                                  dead_cell.clone(),
+                                                  dead_cell.clone()).do_arc(&mut hashes_temp);
+        let mut out = Life { generation: 0,
+                             hashes: hashes_temp.clone(),
+                             advanced_centers: HashMap::new(),
+                             dead_squares: vec![dead_cell, root_temp.clone()],
+                             root: root_temp };
+        out.pad().pad();
+        out
+    }
+
+    /// Returns the current generation.
+    pub fn get_generation(&self) -> u64 {
+        self.generation
+    }
+
+    /// Returns the alive/dead value at the given coordinates. The southwest corner of the
+    /// northeast quadrant is assumed to be (0,0).
+    pub fn get_value(&self, x: isize, y: isize) -> bool {
+        let bound: isize = (2 as isize) << ((self.root.get_level()-1) as isize);
+        if x < -bound || y < -bound || x >= bound || y >= bound {
+            false
+        } else {
+            self.root.get_value(x,y)
+        }
+    }
+
+    /// Returns the canonical completely dead node of the given level.
+    fn canonical_dead(lvl: usize,
+                      dead_squares: &mut Vec<Arc<LifeNode>>,
+                      hashes: &mut HashMap<LifeNode, Arc<LifeNode>>) -> Arc<LifeNode> {
+        if dead_squares.len() > lvl {
+            dead_squares[lvl].clone()
+        } else {
+            let out = LifeNode::with_components(Life::canonical_dead(lvl-1, dead_squares, hashes),
+                                                Life::canonical_dead(lvl-1, dead_squares, hashes),
+                                                Life::canonical_dead(lvl-1, dead_squares, hashes),
+                                                Life::canonical_dead(lvl-1, dead_squares, hashes)).do_arc(hashes);
+            dead_squares.push(out.clone());
+            out
+        }
+    }
+
+    /// Resizes the root node so it has twice the side length but all border squares of level
+    /// root.level-2 are empty and the inner square of level root.level-1 is identical to the
+    /// original root. Returns self.
+    fn pad(&mut self) -> &mut Life {
+        let lvl = self.root.get_level();
+        let padder = Life::canonical_dead((lvl-1) as usize, &mut self.dead_squares, &mut self.hashes);
+        let new_ne = LifeNode::with_components(padder.clone(),
+                                               padder.clone(),
+                                               self.root.get_ne(),
+                                               padder.clone()).do_arc(&mut self.hashes);
+        let new_nw = LifeNode::with_components(padder.clone(),
+                                               padder.clone(),
+                                               padder.clone(),
+                                               self.root.get_nw()).do_arc(&mut self.hashes);
+        let new_sw = LifeNode::with_components(self.root.get_sw(),
+                                               padder.clone(),
+                                               padder.clone(),
+                                               padder.clone()).do_arc(&mut self.hashes);
+        let new_se = LifeNode::with_components(padder.clone(),
+                                               self.root.get_sw(),
+                                               padder.clone(),
+                                               padder.clone()).do_arc(&mut self.hashes);
+        self.root = LifeNode::with_components(new_ne,
+                                              new_nw,
+                                              new_sw,
+                                              new_se).do_arc(&mut self.hashes);
+        self
+    }
+
+    /// Resizes the root node so that all live cells are contained in the center inner square of
+    /// level root.level-2. Returns self.
+    fn expand_to_fit(&mut self) -> &mut Life {
+        let dead_large = Life::canonical_dead((self.root.get_level()-2) as usize,
+                                              &mut self.dead_squares,
+                                              &mut self.hashes);
+        let dead_small = Life::canonical_dead((self.root.get_level()-3) as usize,
+                                              &mut self.dead_squares,
+                                              &mut self.hashes);
+        if !self.root.is_uniform_border(&self.hashes, dead_large) {
+            self.pad().pad();
+            self
+        } else if !LifeNode::with_components(self.root.get_ne().get_sw(),
+                                             self.root.get_nw().get_se(),
+                                             self.root.get_sw().get_ne(),
+                                             self.root.get_se().get_nw()).is_uniform_border(&self.hashes,
+                                                                                            dead_small) {
+            self.pad();
+            self
+        } else {
+            self
+        }
+    }
+
+    /// Advances the board by 2^(self.root.level-2) generations.
+    pub fn advance_arbitrary(&mut self) -> &mut Life {
+        self.generation += (2 as u64) << ((self.root.get_level()-2) as u64);
+        self.root = self.root.advanced_center(&mut self.hashes, &mut self.advanced_centers);
+        self.expand_to_fit()
+    }
 }
