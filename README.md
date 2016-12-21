@@ -18,10 +18,10 @@ Which will launch the simulation!
 
 # Credits 
 
-Conrad Parker - Core algorithm design and implementation. 
-Omar Shehata - Piston/graphics integration, UI, optimization and benchmarking. 
+* Conrad Parker - Core algorithm design and implementation. 
+* Omar Shehata - Piston/graphics integration, UI, optimization and benchmarking. 
 
-# TODO
+### TODO
 * Add some pictures/gifs of interface.
 * Add instructions of how to pause/edit/scroll.
 * Document how to use commandline flags to load initial seed.
