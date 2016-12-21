@@ -5,6 +5,7 @@ extern crate gfx_graphics;
 use std::env;
 use std::io::prelude::*;
 use std::fs::File;
+use std::error::Error;
 
 use piston_window::*;
 
@@ -20,8 +21,8 @@ fn main() {
 
     let mut mode = "single".to_string();
     let mut zoom = 1.0;
-    let mut offsetX = 0.0;
-    let mut offsetY = 0.0;
+    let mut offset_x = 0.0;
+    let mut offset_y = 0.0;
     let mut name = "Conrad's Game of Life";
     let mut file_to_load = "src/pento.cells".to_string();
 
@@ -41,8 +42,13 @@ fn main() {
     // Read pattern from file 
     let mut cells_file = File::open(file_to_load).unwrap();
     let mut primer_data = String::new();
-    cells_file.read_to_string(&mut primer_data);
-    let mut lines = primer_data.split("\n");
+    
+    match cells_file.read_to_string(&mut primer_data){
+        Err(why) => panic!("couldn't read file - {}", why.description()),
+        Ok(_) => println!("Succesfully read file!"),
+    }
+
+    let lines = primer_data.split("\n");
     let mut row = 0;
     let mut column = 0;
     for l in lines {
@@ -98,9 +104,9 @@ fn main() {
     }
     
 
-    let mut windowSettings = WindowSettings::new(name, [WINDOW_WIDTH,WINDOW_HEIGHT]);
+    let window_settings = WindowSettings::new(name, [WINDOW_WIDTH,WINDOW_HEIGHT]);
 
-    let mut window: PistonWindow = windowSettings.build().unwrap();
+    let mut window: PistonWindow = window_settings.build().unwrap();
 
 
     let mut events = window.events();
@@ -119,8 +125,8 @@ fn main() {
     let mut mouse_pos:[f64;2] = [0.0,0.0];
     let mut mouse_middle_down = false;
     let mut mouse_last_pos:[f64;2] = [0.0,0.0];
-    let mut prevOffsetX = offsetX;
-    let mut prevOffsetY = offsetY;
+    let mut prevoffset_x = offset_x;
+    let mut prevoffset_y = offset_y;
 
     while let Some(e) = events.next(&mut window) {
 
@@ -138,8 +144,8 @@ fn main() {
         };
 
         if let Some(Button::Mouse(mouse_btn)) = e.press_args() {
-           let x = (((mouse_pos[0] - offsetX) - (WINDOW_WIDTH as f64/2.0)) / zoom).floor() as isize;
-           let y = (((mouse_pos[1] - offsetY) - (WINDOW_HEIGHT as f64/2.0)) / zoom).floor() as isize;
+           let x = (((mouse_pos[0] - offset_x) - (WINDOW_WIDTH as f64/2.0)) / zoom).floor() as isize;
+           let y = (((mouse_pos[1] - offset_y) - (WINDOW_HEIGHT as f64/2.0)) / zoom).floor() as isize;
 
            if mouse_btn == MouseButton::Middle {
               mouse_middle_down=true;
@@ -167,12 +173,12 @@ fn main() {
             mouse_pos =  mot;
             if mouse_middle_down == false {
                 mouse_last_pos = mot;
-                prevOffsetX = offsetX;
-                prevOffsetY = offsetY;
+                prevoffset_x = offset_x;
+                prevoffset_y = offset_y;
             }
             if mouse_middle_down == true {
-                offsetX = mot[0] - mouse_last_pos[0] + prevOffsetX;
-                offsetY = mot[1] - mouse_last_pos[1] + prevOffsetY;
+                offset_x = mot[0] - mouse_last_pos[0] + prevoffset_x;
+                offset_y = mot[1] - mouse_last_pos[1] + prevoffset_y;
             }
         };
 
@@ -186,7 +192,7 @@ fn main() {
             }
         };
 
-        if let Some(r) = e.render_args() {
+        if e.render_args().is_some() {
             //Render!
 
             if running {
@@ -204,9 +210,9 @@ fn main() {
 
             //Draw the grid 
             if mode == "single" {
-                r_pentomino.draw(&mut window,&e,zoom,offsetX,offsetY);
+                r_pentomino.draw(&mut window,&e,zoom,offset_x,offset_y);
             } else {
-                r_pentomino_parallel.draw(&mut window,&e,zoom,offsetX,offsetY);
+                r_pentomino_parallel.draw(&mut window,&e,zoom,offset_x,offset_y);
             }
             
             let mut generation = r_pentomino.generation;
@@ -214,35 +220,35 @@ fn main() {
                 generation = r_pentomino_parallel.generation;
             }
 
-            let displayOne:String = format!("Average time per generation: {0:.4} seconds.", running_average_time / running_average_count);  
-            let displayTwo:String = format!("Time taken for last generation: {0:.4} seconds.", time_taken);  
-            let displayThree:String = format!("Generation: {}", generation);  
+            let display_one:String = format!("Average time per generation: {0:.4} seconds.", running_average_time / running_average_count);  
+            let display_two:String = format!("Time taken for last generation: {0:.4} seconds.", time_taken);  
+            let display_three:String = format!("Generation: {}", generation);  
 
              //Render text
              window.draw_2d(&e, |c, g| {
-                let X = 5.0;
-                let Y = 15.0;
+                let x = 5.0;
+                let y = 15.0;
                 let line_spacing = 15.0;
 
-                let mut transform = c.transform.trans(X, Y);
+                let mut transform = c.transform.trans(x, y);
                 text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &displayOne,
+                    &display_one,
                     &mut glyphs,
                     &c.draw_state,
                     transform, g
                 );
 
-                transform = c.transform.trans(X, Y+line_spacing);
+                transform = c.transform.trans(x, y+line_spacing);
                 text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &displayTwo,
+                    &display_two,
                     &mut glyphs,
                     &c.draw_state,
                     transform, g
                 );
 
-                transform = c.transform.trans(X, Y+line_spacing*2.0);
+                transform = c.transform.trans(x, y+line_spacing*2.0);
                 text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &displayThree,
+                    &display_three,
                     &mut glyphs,
                     &c.draw_state,
                     transform, g
@@ -252,7 +258,7 @@ fn main() {
             });
         }
 
-        if let Some(u) = e.update_args() {
+        if e.update_args().is_some() {
             //Update
         }
     }
