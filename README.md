@@ -29,3 +29,4 @@ Which will launch the simulation!
 * Implement Rust traits for the sequential/parallel versions of the algorithm.
 * Implement the [Hashlife](https://en.wikipedia.org/wiki/Hashlife) algorithm.
 * Compare and benchmark different algorithms (and be able to switch between them in real time???)
+* Add alternative controls for zooming/panning with keyboard (so that you can still navigate without a mouse)
