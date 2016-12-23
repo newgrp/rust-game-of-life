@@ -6,34 +6,7 @@ use std;
 
 use piston_window::*;
 
-#[derive(Clone)]
-struct Bounds {   
-    x_min: isize,
-    x_max: isize,
-    y_min: isize,
-    y_max: isize,
-}
-
-impl Bounds {
-    fn new() -> Bounds {
-        Bounds { x_min: 0, x_max: 0, y_min: 0, y_max: 0 }
-    }
-
-    fn update_bounds(&mut self, x:isize, y:isize) {
-        if x < self.x_min {
-            self.x_min = x;
-        }
-        if x > self.x_max {
-            self.x_max = x;
-        }
-        if y < self.y_min {
-            self.y_min = y;
-        }
-        if y > self.y_max {
-            self.y_max = y;
-        }
-    }
-}
+use life_traits::Bounds;
 
 pub struct Life {
     pub generation: i64,

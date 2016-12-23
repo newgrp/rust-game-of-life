@@ -12,6 +12,7 @@ use piston_window::*;
 const WINDOW_WIDTH:u32 = 600;
 const WINDOW_HEIGHT:u32 = 400;
 
+mod life_traits;
 mod life_sequential;
 mod life_parallel;
 mod hashlife_sequential;
