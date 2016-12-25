@@ -30,3 +30,4 @@ Which will launch the simulation!
 * Implement the [Hashlife](https://en.wikipedia.org/wiki/Hashlife) algorithm.
 * Compare and benchmark different algorithms (and be able to switch between them in real time???)
 * Add alternative controls for zooming/panning with keyboard (so that you can still navigate without a mouse)
+* Make parallel algorithm only use twice as many threads as you have cores, as opposed to 64 threads.
