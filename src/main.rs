@@ -20,17 +20,9 @@ use gui::GUI;
 
 /*
 TODO:
-- 
-- 
-- 
--   
-- 
-- 
-- 
 - Put real parallel and hashlife algorithm in
-- 
+- Delete life_parallel.rs, life_sequential.rs, life_traits.rs, hashlife_sequential.rs, main.rs.old.rs
  */
-
 
 fn main() {
     // Collect any command line arguments 
