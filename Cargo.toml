@@ -5,6 +5,7 @@ authors = ["birdperson-lives <rayradjr@gmail.com>", "Omar Shehata <omar.sameh.sh
 
 [dependencies]
 piston_window = "0.58.0"
-time = "0.1"
 piston2d-gfx_graphics = "0.33.2"
+time = "0.1"
 rand = "0.3"
+find_folder = "*"

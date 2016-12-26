@@ -1,6 +1,6 @@
 extern crate piston_window;
 extern crate time;
-extern crate gfx_graphics;
+extern crate find_folder;
 
 use std::env;
 use std::io::prelude::*;
@@ -8,47 +8,195 @@ use std::fs::File;
 use std::error::Error;
 
 use piston_window::*;
+use find_folder::Search;
+use std::path::PathBuf;
 
-const WINDOW_WIDTH:u32 = 600;
-const WINDOW_HEIGHT:u32 = 400;
+mod common;
+mod life_algorithms;
+mod gui;
 
-mod life_sequential;
-mod life_parallel;
-mod hashlife_sequential;
+use common::LifeAlgorithm;
+use gui::GUI;
+
+/*
+TODO:
+- 
+- 
+- 
+-   
+- 
+- 
+- 
+- Put real parallel and hashlife algorithm in
+- 
+ */
+
 
 fn main() {
+    // Collect any command line arguments 
+    // All args are optional. 
+    // First is which built in pattern to start with. Defaults to r_pentomino
+    // Second is which algorithm to use. Defaults to sequential. 
     let args: Vec<String> = env::args().collect();
-
-    let mut mode = "single".to_string();
-    let mut zoom = 1.0;
-    let mut offset_x = 0.0;
-    let mut offset_y = 0.0;
-    let mut name = "Conrad's Game of Life";
-    let mut file_to_load = "src/pento.cells".to_string();
-
-    if args.len() > 1 {
-        mode = args[1].parse().unwrap();
-    }
-    if args.len() > 2 {
-        zoom = args[2].parse().unwrap();
-    }
-    if args.len() > 3 {
-        file_to_load = args[3].parse().unwrap();
-    }
-
-    let mut r_pentomino = life_sequential::Life::new(WINDOW_WIDTH,WINDOW_HEIGHT);
-    let mut r_pentomino_parallel = life_parallel::Life::new(WINDOW_WIDTH,WINDOW_HEIGHT);
-
-    // Read pattern from file 
-    let mut cells_file = File::open(file_to_load).unwrap();
-    let mut primer_data = String::new();
     
-    match cells_file.read_to_string(&mut primer_data){
-        Err(why) => panic!("couldn't read file - {}", why.description()),
+    let mut seed_pattern = "r_pentomino".to_string();
+    let mut mode = "sequential".to_string();
+
+    if args.len() > 1 { seed_pattern = args[1].parse().unwrap(); }
+    if args.len() > 2 { mode = args[2].parse().unwrap(); }
+
+    // Instantiate the right algorithm based on the given mode 
+    let mut life_logic:Box<LifeAlgorithm> = match mode.as_ref() {
+        "sequential" => Box::new(life_algorithms::sequential::Life::new()),
+        "parallel" => Box::new(life_algorithms::parallel::Life::new()),
+        "hashlife" => Box::new(life_algorithms::hashlife::Life::new()),
+        _ => panic!("{:?} is not a recognized algorithm. See src/life_algorithms for a list of implemented algorithms.", mode),
+    };
+
+    // Get asset path 
+    let asset_path = Search::Parents(3).for_folder("assets").unwrap();
+    
+    // Read pattern from file       
+    let mut init_file:PathBuf = asset_path.clone(); 
+        init_file.push("game_seeds");
+        init_file.push(seed_pattern + &".cells".to_string());
+    read_seed_from_file(&mut life_logic,init_file);
+
+    
+    // Set up Piston window
+    
+    let mut window:PistonWindow = WindowSettings::new("Rusty Game of Life - ".to_string() + &mode, [600,400]).build().unwrap();
+    let mut events = window.events();
+
+    // Get the font and create Glyphs
+    let mut font_path = asset_path.clone();
+        font_path.push("fonts");
+        font_path.push("Quicksand-Regular.ttf");
+    let factory = window.factory.clone();
+    let mut glyphs = Glyphs::new(font_path, factory).unwrap();
+
+    // Initialize GUI 
+    let mut gui_obj = GUI::new();
+
+    // Some variables for benchmarking
+    let mut time_taken = 0.0;
+    let mut running_average_count = 0.0;
+    let mut running_average_time = 0.0;
+
+    let mut do_update = true;
+
+    // Capture all the events we need and call the gui functions for each
+    while let Some(e) = events.next(&mut window) {
+
+        if let Some(Button::Keyboard(key)) = e.press_args() {
+            gui_obj.key_press(key);
+        };
+
+        if let Some(Button::Mouse(mouse_btn)) = e.release_args() {
+            gui_obj.mouse_release(mouse_btn);
+        };
+
+        if let Some(Button::Mouse(mouse_btn)) = e.press_args() {
+           gui_obj.mouse_press(mouse_btn,&mut life_logic,&mut window);
+        };
+       
+        if let Some(mot) = e.mouse_cursor_args(){
+            gui_obj.mouse_move(mot);
+        };
+
+        if let Some(scroll) = e.mouse_scroll_args(){
+            gui_obj.mouse_scroll(scroll);
+        };
+
+        if let Some(args) = e.render_args() {
+
+            //println!("Render {} !",args.ext_dt);
+
+            do_update = true;
+
+            //Draw the grid 
+            gui_obj.draw(&life_logic,&mut window,&e);
+            
+            let generation = life_logic.get_generation();
+            
+            let average_time_text:String = format!("Average time per generation: {0:.4} seconds.", running_average_time / running_average_count);  
+            let last_time_text:String = format!("Time taken for last generation: {0:.4} seconds.", time_taken);  
+            let current_generation_text:String = format!("Generation: {}", generation);  
+
+            // Render text
+             window.draw_2d(&e, |c, g| {
+                let x = 5.0;
+                let y = 15.0;
+                let line_spacing = 15.0;
+
+                let mut transform = c.transform.trans(x, y);
+                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
+                    &average_time_text,
+                    &mut glyphs,
+                    &c.draw_state,
+                    transform, g
+                );
+
+                transform = c.transform.trans(x, y+line_spacing);
+                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
+                    &last_time_text,
+                    &mut glyphs,
+                    &c.draw_state,
+                    transform, g
+                );
+
+                transform = c.transform.trans(x, y+line_spacing*2.0);
+                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
+                    &current_generation_text,
+                    &mut glyphs,
+                    &c.draw_state,
+                    transform, g
+                );
+
+
+            });
+        }
+
+        if let Some(args) = e.update_args(){
+            //Update
+            //println!("Update {:?} !",args.dt);
+
+            if !gui_obj.is_paused() && do_update {
+                // Record time it takes to calculate this generation step
+                let start_time = time::precise_time_ns() as f64;
+                // Advance the simulation 
+                life_logic.advance_by(1);
+                // Now calculate the time and average 
+                time_taken =  ((time::precise_time_ns() as f64 - start_time) as f64) / 1000000000.0;
+                running_average_count += 1.0;
+                running_average_time += time_taken;
+                do_update = false;
+            }
+
+        }
+    }
+
+}
+
+fn read_seed_from_file(life_obj:&mut Box<LifeAlgorithm>,path:PathBuf){
+    // Takes a ref to a game-of-life object and an absolute filepath, and reads the pattern 
+    // Open the file 
+    let mut file = match File::open(&path) {
+        Err(why) => panic!("Couldn't open {}: {}",path.display(),why.description()),
+        Ok(file) => file,
+    };
+    // Read into file_data
+    let mut file_data = String::new();
+    match file.read_to_string(&mut file_data){
+        Err(why) => panic!("Couldn't read file {}: {}",path.display(), why.description()),
         Ok(_) => println!("Succesfully read file!"),
     }
 
-    let lines = primer_data.split("\n");
+    // Clear life object first 
+    (*life_obj).clear();
+
+    // Split into lines and insert alive cells into object 
+    let lines = file_data.split("\n");
     let mut row = 0;
     let mut column = 0;
     for l in lines {
@@ -58,17 +206,11 @@ fn main() {
             if first_char != '!' {
                 //This is a data line 
                 
-
                 //Iterate over chars 
                 for c in l.chars() {
                     if c == 'O' {
-                        println!("Set {},{}", column,row);
-                        if mode == "single" {
-                            r_pentomino.set_primitive((column,row), 1);
-                        } else {
-                            r_pentomino_parallel.set_primitive((column,row), 1);
-                        }
-                        
+                        //println!("Set ({},{}) to alive", column,row);
+                        (*life_obj).set((column,row), 1);                        
                     }
 
                     column += 1;
@@ -82,185 +224,5 @@ fn main() {
         
     }
 
-    r_pentomino.cleanup();
-    r_pentomino_parallel.cleanup();
-    
-
-    if mode == "single" {
-        r_pentomino.generation = 0;
-        // r_pentomino.set((0,0), 1);
-        // r_pentomino.set((0,1), 1);
-        // r_pentomino.set((1,1), 1);
-        // r_pentomino.set((-1,0), 1);
-        // r_pentomino.set((0,-1), 1);
-    } else {
-        r_pentomino_parallel.generation = 0;
-        // r_pentomino_parallel.set((0,0), 1);
-        // r_pentomino_parallel.set((0,1), 1);
-        // r_pentomino_parallel.set((1,1), 1);
-        // r_pentomino_parallel.set((-1,0), 1);
-        // r_pentomino_parallel.set((0,-1), 1);
-        name = "Conrad's Game of Life - Parallel"
-    }
-    
-
-    let window_settings = WindowSettings::new(name, [WINDOW_WIDTH,WINDOW_HEIGHT]);
-
-    let mut window: PistonWindow = window_settings.build().unwrap();
-
-
-    let mut events = window.events();
-
-    let mut running_average_time = 0.0;
-    let mut running_average_count = 0.0;
-
-    let font_path = "src/Quicksand-Regular.ttf";
-    let factory = window.factory.clone();
-    let mut glyphs = Glyphs::new(font_path, factory).unwrap();
-
-    let mut running = true;
-    
-    let mut time_taken = 0.0;
-
-    let mut mouse_pos:[f64;2] = [0.0,0.0];
-    let mut mouse_middle_down = false;
-    let mut mouse_last_pos:[f64;2] = [0.0,0.0];
-    let mut prevoffset_x = offset_x;
-    let mut prevoffset_y = offset_y;
-
-    while let Some(e) = events.next(&mut window) {
-
-        if let Some(Button::Keyboard(key)) = e.press_args() {
-           if key == Key::Space {
-             running = !running;
-           }
-        };
-
-        if let Some(Button::Mouse(mouse_btn)) = e.release_args() {
-            if mouse_btn == MouseButton::Middle {
-                //Stop moving 
-                mouse_middle_down = false;
-            }
-        };
-
-        if let Some(Button::Mouse(mouse_btn)) = e.press_args() {
-           let x = (((mouse_pos[0] - offset_x) - (WINDOW_WIDTH as f64/2.0)) / zoom).floor() as isize;
-           let y = (((mouse_pos[1] - offset_y) - (WINDOW_HEIGHT as f64/2.0)) / zoom).floor() as isize;
-
-           if mouse_btn == MouseButton::Middle {
-              mouse_middle_down=true;
-           }
-           if mouse_btn == MouseButton::Left {
-              // Set Alive
-              if mode == "single" {
-                r_pentomino.set((x,y),1); 
-              } else {
-                r_pentomino_parallel.set((x,y),1); 
-              }
-            
-           }
-           if mouse_btn == MouseButton::Right {
-              // Set Dead
-              if mode == "single" {
-                r_pentomino.set((x,y),0); 
-              } else {
-                r_pentomino_parallel.set((x,y),0); 
-              }
-           }
-        };
-       
-        if let Some(mot) = e.mouse_cursor_args(){
-            mouse_pos =  mot;
-            if mouse_middle_down == false {
-                mouse_last_pos = mot;
-                prevoffset_x = offset_x;
-                prevoffset_y = offset_y;
-            }
-            if mouse_middle_down == true {
-                offset_x = mot[0] - mouse_last_pos[0] + prevoffset_x;
-                offset_y = mot[1] - mouse_last_pos[1] + prevoffset_y;
-            }
-        };
-
-        if let Some(scroll) = e.mouse_scroll_args(){
-            let zoom_power = 0.1;
-            if scroll[1] == 1.0 {
-                zoom += zoom_power;
-            }
-            if scroll[1] == -1.0 {
-                zoom -= zoom_power;
-            }
-        };
-
-        if e.render_args().is_some() {
-            //Render!
-
-            if running {
-                let start_time = time::precise_time_ns() as f64;
-                if mode == "single" {
-                    r_pentomino.advance(); 
-                } else {
-                    r_pentomino_parallel.advance(); 
-                }
-                time_taken =  ((time::precise_time_ns() as f64 - start_time) as f64) / 1000000000.0;
-                running_average_count += 1.0;
-                running_average_time += time_taken;
-            }
-            
-
-            //Draw the grid 
-            if mode == "single" {
-                r_pentomino.draw(&mut window,&e,zoom,offset_x,offset_y);
-            } else {
-                r_pentomino_parallel.draw(&mut window,&e,zoom,offset_x,offset_y);
-            }
-            
-            let mut generation = r_pentomino.generation;
-            if mode == "parallel" {
-                generation = r_pentomino_parallel.generation;
-            }
-
-            let display_one:String = format!("Average time per generation: {0:.4} seconds.", running_average_time / running_average_count);  
-            let display_two:String = format!("Time taken for last generation: {0:.4} seconds.", time_taken);  
-            let display_three:String = format!("Generation: {}", generation);  
-
-             //Render text
-             window.draw_2d(&e, |c, g| {
-                let x = 5.0;
-                let y = 15.0;
-                let line_spacing = 15.0;
-
-                let mut transform = c.transform.trans(x, y);
-                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &display_one,
-                    &mut glyphs,
-                    &c.draw_state,
-                    transform, g
-                );
-
-                transform = c.transform.trans(x, y+line_spacing);
-                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &display_two,
-                    &mut glyphs,
-                    &c.draw_state,
-                    transform, g
-                );
-
-                transform = c.transform.trans(x, y+line_spacing*2.0);
-                text::Text::new_color([0.0, 0.0, 0.0, 1.0], 11).draw(
-                    &display_three,
-                    &mut glyphs,
-                    &c.draw_state,
-                    transform, g
-                );
-
-
-            });
-        }
-
-        if e.update_args().is_some() {
-            //Update
-        }
-    }
-
+    (*life_obj).clean_up();
 }
