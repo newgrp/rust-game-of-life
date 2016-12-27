@@ -181,7 +181,7 @@ fn read_seed_from_file(life_obj:&mut Box<LifeAlgorithm>,path:PathBuf){
                 for (i,c) in line.chars().enumerate() {
                     match c {
                         '.' => (),
-                        'O' => (*life_obj).set((i as isize,-j), true), 
+                        'O' => (*life_obj).set((i as isize,j), true), 
                         _   => panic!("Invalid character {} at position {}, {} in file {}",
                                       c, lno, i, path.display()),
                     };
