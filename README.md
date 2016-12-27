@@ -31,4 +31,4 @@ Which will launch the simulation!
 * Compare and benchmark different algorithms (and be able to switch between them in real time???)
 * Add alternative controls for zooming/panning with keyboard (so that you can still navigate without a mouse)
 * ~~Make parallel algorithm only use twice as many threads as you have cores, as opposed to 64 threads.~~
-* Make file reading code properly deal with empty lines. (Right now it ignores empty lines)
+* ~~Make file reading code properly deal with empty lines. (Right now it ignores empty lines)~~
