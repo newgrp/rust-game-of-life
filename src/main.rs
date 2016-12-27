@@ -55,7 +55,7 @@ fn main() {
     read_seed_from_file(&mut life_logic,init_file);
 
     
-    // Set up Piston window
+    // Set up Piston window 
     
     let mut window:PistonWindow = WindowSettings::new("Rusty Game of Life - ".to_string() + &mode, [600,400]).build().unwrap();
     let mut events = window.events();
@@ -100,9 +100,7 @@ fn main() {
             gui_obj.mouse_scroll(scroll);
         };
 
-        if let Some(args) = e.render_args() {
-
-            //println!("Render {} !",args.ext_dt);
+        if let Some(_) = e.render_args() {
 
             do_update = true;
 
@@ -149,9 +147,8 @@ fn main() {
             });
         }
 
-        if let Some(args) = e.update_args(){
+        if let Some(_) = e.update_args(){
             //Update
-            //println!("Update {:?} !",args.dt);
 
             if !gui_obj.is_paused() && do_update {
                 // Record time it takes to calculate this generation step

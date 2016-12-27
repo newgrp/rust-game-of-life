@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 /*
 
 This file is responsible for rendering the grid 
