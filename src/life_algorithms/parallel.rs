@@ -216,7 +216,11 @@ impl LifeAlgorithm for Life {
         self.rect.clone()
     }
     fn clear(&mut self) {
-        
+        if let Some(re) = Arc::get_mut(&mut self.cells) {
+            (*re).drain();
+        } else {
+            Life::cells_access_record("Life::clear");
+        }
     }
 
 

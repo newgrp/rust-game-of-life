@@ -110,7 +110,7 @@ impl LifeAlgorithm for Life {
         self.rect.clone()
     }
     fn clear(&mut self) {
-        
+        self.cells.drain();
     }
     fn output(&self) -> HashMap<(isize, isize), bool>{
         self.cells.clone()
