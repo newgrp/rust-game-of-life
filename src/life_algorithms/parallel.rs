@@ -24,7 +24,7 @@ impl Bounds {
 #[derive(Clone)]
 pub struct Life {
     pub generation: i64,
-    pub cells: Arc<HashMap<(isize, isize), i8>>,
+    pub cells: Arc<HashMap<(isize, isize), bool>>,
     parts: Vec<Arc<HashSet<(isize, isize)>>>,
     rect: Bounds,
     num_threads:usize,
@@ -39,17 +39,17 @@ impl Life {
         println!("Arc::get_mut(&mut self.cells) returned None at {}", s);
     }
 
-    fn next_val_from_arc(cells_ref:&Arc<HashMap<(isize, isize), i8>>, x:isize, y:isize) -> i8 {
+    fn next_val_from_arc(cells_ref:&Arc<HashMap<(isize, isize), bool>>, x:isize, y:isize) -> bool {
         let mut neighbors: i8 = 0;
         for (i,j) in Life::get_adjacent(x,y) {
             if cells_ref.contains_key(&(i,j)) {
-                neighbors += cells_ref[&(i,j)];
+                if cells_ref[&(i,j)] == true { neighbors+=1; }
             }
         }
-        if (neighbors == 3) | ((neighbors == 2) & (cells_ref[&(x,y)] == 1)) {
-            1
+        if (neighbors == 3) | ((neighbors == 2) & (cells_ref[&(x,y)] == true)) {
+            true
         } else {
-            0
+            false
         }
     }
 
@@ -80,7 +80,7 @@ impl LifeAlgorithm for Life {
                     cells_new
                 }));
             }
-            let mut cells_new: Vec<HashMap<(isize, isize), i8>> = vec![];
+            let mut cells_new: Vec<HashMap<(isize, isize), bool>> = vec![];
             for hand in thread_handles {
                 cells_new.push(hand.join().unwrap());
             }
@@ -100,7 +100,7 @@ impl LifeAlgorithm for Life {
         }
         
     }
-    fn set(&mut self,t:(isize,isize), v: i8){
+    fn set(&mut self,t:(isize,isize), v: bool){
         let x = t.0;
         let y = t.1;
         if !self.cells.contains_key(&(x,y)) {
@@ -141,7 +141,7 @@ impl LifeAlgorithm for Life {
                 let mut to_add: Vec<(isize, isize)> = vec![];
                 let mut to_del: Vec<(isize, isize)> = vec![];
                 for &(x,y) in my_part.iter() {
-                    if my_cells[&(x,y)] == 1 {
+                    if my_cells[&(x,y)] == true {
                         temp.update_bounds(x,y);
                         for (i,j) in Life::get_adjacent(x,y) {
                             if !my_cells.contains_key(&(i,j)) {
@@ -152,7 +152,7 @@ impl LifeAlgorithm for Life {
                         let mut barren = true;
                         for (i,j) in Life::get_adjacent(x,y) {
                             if my_cells.contains_key(&(i,j)) {
-                                if my_cells[&(i,j)] == 1 {
+                                if my_cells[&(i,j)] == true {
                                     barren = false;
                                     break;
                                 }
@@ -180,7 +180,7 @@ impl LifeAlgorithm for Life {
             for &(x,y) in &to_adds[k] {
                 if !self.cells.contains_key(&(x,y)) {
                     if let Some(re) = Arc::get_mut(&mut self.cells) {
-                        (*re).insert((x,y), 0);
+                        (*re).insert((x,y), false);
                     } else {
                         Life::cells_access_record("Life::cleanup, inserting new cells");
                     }
@@ -220,8 +220,8 @@ impl LifeAlgorithm for Life {
     }
 
 
-    fn output(&self) -> HashMap<(isize, isize), i8>{
-        let mut output_map:HashMap<(isize,isize),i8> = HashMap::new();
+    fn output(&self) -> HashMap<(isize, isize), bool>{
+        let mut output_map:HashMap<(isize,isize),bool> = HashMap::new();
 
         for (key, val) in self.cells.iter() {
             output_map.insert(key.clone(),val.clone());

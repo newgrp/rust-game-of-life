@@ -55,11 +55,11 @@ impl GUI {
 		}
 		if mouse_btn == MouseButton::Left {
 			// Set Alive
-			life_obj.set((x,y),1); 
+			life_obj.set((x,y),true); 
 		}
 		if mouse_btn == MouseButton::Right {
 			// Set Dead
-			life_obj.set((x,y),0);
+			life_obj.set((x,y),false);
 		}
 	}
 	pub fn mouse_release(&mut self,mouse_btn:MouseButton){
@@ -104,7 +104,7 @@ impl GUI {
             x = bounds.x_min;
             while x <= bounds.x_max {
                 if cells.contains_key(&(x,y)) {
-                    if cells[&(x,y)] == 1 {
+                    if cells[&(x,y)] == true {
                         line.push_str("*");
                     } else {
                         line.push_str(" ");
@@ -147,7 +147,7 @@ impl GUI {
                 x = bounds.x_min;
                 while x <= bounds.x_max {
                     if cells.contains_key(&(x,y)) {
-                        if cells[&(x,y)] == 1 {
+                        if cells[&(x,y)] == true {
                             // Alive 
                             rectangle([1.0, 0.0, 0.0, 1.0], // red
                                       [x as f64 + half_width, y as f64 + half_height, 1.0 ,1.0], // rectangle

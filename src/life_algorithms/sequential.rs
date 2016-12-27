@@ -5,7 +5,7 @@ use common::{LifeAlgorithm,Bounds};
 
 pub struct Life {
     pub generation: i64,
-    pub cells: HashMap<(isize, isize), i8>,
+    pub cells: HashMap<(isize, isize), bool>,
     rect: Bounds,
 }
 
@@ -13,17 +13,17 @@ impl Life {
     pub fn new() -> Life {
         Life { generation: 0,cells: HashMap::new(), rect: Bounds::new()}
     }
-    fn next_val(&self, x:isize, y:isize) -> i8 {
+    fn next_val(&self, x:isize, y:isize) -> bool {
         let mut neighbors: i8 = 0;
         for (i,j) in self.get_adjacent(x,y) {
             if self.cells.contains_key(&(i,j)) {
-                neighbors += self.cells[&(i,j)];
+                if self.cells[&(i,j)] == true { neighbors+=1; }
             }
         }
-        if (neighbors == 3) | ((neighbors == 2) & (self.cells[&(x,y)] == 1)) {
-            1
+        if (neighbors == 3) | ((neighbors == 2) & (self.cells[&(x,y)] == true)) {
+            true
         } else {
-            0
+            false
         }
     }
     fn get_adjacent(&self, x:isize, y:isize) -> Vec<(isize, isize)> {
@@ -41,7 +41,7 @@ impl Life {
 impl LifeAlgorithm for Life {
     fn advance_by(&mut self,count:u64){
         for _ in 0..count {
-            let mut cells_new: HashMap<(isize, isize), i8> = HashMap::new();
+            let mut cells_new: HashMap<(isize, isize), bool> = HashMap::new();
             for &(x,y) in self.cells.keys() {
                cells_new.insert((x,y), self.next_val(x,y));
             }
@@ -51,7 +51,7 @@ impl LifeAlgorithm for Life {
         }
         
     }
-    fn set(&mut self,cell:(isize,isize), value: i8){
+    fn set(&mut self,cell:(isize,isize), value: bool){
         let x = cell.0;
         let y = cell.1;
         if !self.cells.contains_key(&(x,y)) {
@@ -71,7 +71,7 @@ impl LifeAlgorithm for Life {
         let mut to_add: Vec<(isize, isize)> = vec![];
         let mut to_del: Vec<(isize, isize)> = vec![];
         for (&(x,y),v) in &self.cells {
-            if *v == 1 {
+            if *v == true {
                 self.rect.update_bounds(x,y);
                 for (i,j) in self.get_adjacent(x,y) {
                     if !self.cells.contains_key(&(i,j)) {
@@ -82,7 +82,7 @@ impl LifeAlgorithm for Life {
                 let mut barren = true;
                 for (i,j) in self.get_adjacent(x,y) {
                     if self.cells.contains_key(&(i,j)) {
-                        if self.cells[&(i,j)] == 1 {
+                        if self.cells[&(i,j)] == true {
                             barren = false;
                             break;
                         }
@@ -96,7 +96,7 @@ impl LifeAlgorithm for Life {
             }
         }
         for (x,y) in to_add {
-            self.cells.insert((x,y), 0);
+            self.cells.insert((x,y), false);
             self.rect.update_bounds(x,y);
         }
         for (x,y) in to_del {
@@ -112,7 +112,7 @@ impl LifeAlgorithm for Life {
     fn clear(&mut self) {
         
     }
-    fn output(&self) -> HashMap<(isize, isize), i8>{
+    fn output(&self) -> HashMap<(isize, isize), bool>{
         self.cells.clone()
     }
 

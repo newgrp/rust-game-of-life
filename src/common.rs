@@ -16,12 +16,12 @@ use std::collections::HashMap;
 
 pub trait LifeAlgorithm {
 	fn advance_by(&mut self,count:u64); //Advances the simulation forward [count] step(s) 
-	fn set(&mut self,cell:(isize,isize), value: i8); //Sets the value (0 or 1, dead or alive) of a given cell (x,y)
+	fn set(&mut self,cell:(isize,isize), value: bool); //Sets the value (0 or 1, dead or alive) of a given cell (x,y)
 	fn clean_up(&mut self); //Performs any necessary clean up after setting values (for resizing the hashmap) 
 	fn clear(&mut self); //Clears the entire grid
 	fn get_generation(&self) -> i64; //Get the current generation
 	fn get_bounds(&self) -> Bounds; // Gets the bounds of this life simulation
-	fn output(&self) -> HashMap<(isize, isize), i8>; // Get a copy of the hashmap of (x,y) points, and 0 (dead) or 1 (alive). Used to draw on screen or output as ASCII in terminal
+	fn output(&self) -> HashMap<(isize, isize), bool>; // Get a copy of the hashmap of (x,y) points, and 0 (dead) or 1 (alive). Used to draw on screen or output as ASCII in terminal
 }
 
 #[derive(Clone)]
