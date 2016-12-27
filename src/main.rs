@@ -4,8 +4,8 @@ extern crate find_folder;
 
 use std::env;
 use std::io::prelude::*;
+use std::io::BufReader;
 use std::fs::File;
-use std::error::Error;
 
 use piston_window::*;
 use find_folder::Search;
@@ -18,11 +18,6 @@ mod gui;
 use common::LifeAlgorithm;
 use gui::GUI;
 
-/*
-TODO:
-- Put real parallel and hashlife algorithm in
-- Delete life_parallel.rs, life_sequential.rs, life_traits.rs, hashlife_sequential.rs, main.rs.old.rs
- */
 
 fn main() {
     // Collect any command line arguments 
@@ -41,7 +36,7 @@ fn main() {
     let mut life_logic:Box<LifeAlgorithm> = match mode.as_ref() {
         "sequential" => Box::new(life_algorithms::sequential::Life::new()),
         "parallel" => Box::new(life_algorithms::parallel::Life::new()),
-        "hashlife" => Box::new(life_algorithms::hashlife::Life::new()),
+        //"hashlife" => Box::new(life_algorithms::hashlife::Life::new()),
         _ => panic!("{:?} is not a recognized algorithm. See src/life_algorithms for a list of implemented algorithms.", mode),
     };
 
@@ -168,50 +163,38 @@ fn main() {
 }
 
 fn read_seed_from_file(life_obj:&mut Box<LifeAlgorithm>,path:PathBuf){
-    // Takes a ref to a game-of-life object and an absolute filepath, and reads the pattern 
-    // Open the file 
-    let mut file = match File::open(&path) {
-        Err(why) => panic!("Couldn't open {}: {}",path.display(),why.description()),
-        Ok(file) => file,
-    };
-    // Read into file_data
-    let mut file_data = String::new();
-    match file.read_to_string(&mut file_data){
-        Err(why) => panic!("Couldn't read file {}: {}",path.display(), why.description()),
-        Ok(_) => println!("Succesfully read file!"),
-    }
+    // Takes a ref to a game-of-life object and an absolute filepath, and reads the pattern
+    // Expects to find a .cells file 
+    assert_eq!(path.extension().unwrap(), "cells");
+    // Attempt to open the file
+    if let Ok(f) = File::open(&path) {
+        let f = BufReader::new(f);
+        let mut j = 0;
 
-    // Clear life object first 
-    (*life_obj).clear();
+        // Clear life object first 
+        (*life_obj).clear();
 
-    // Split into lines and insert alive cells into object 
-    let lines = file_data.split("\n");
-    let mut row = 0;
-    let mut column = 0;
-    for l in lines {
-        if l != "" {
-            let first_char = l.chars().nth(0).unwrap();
-            // Skip comments 
-            if first_char != '!' {
-                //This is a data line 
-                
-                //Iterate over chars 
-                for c in l.chars() {
-                    if c == 'O' {
-                        //println!("Set ({},{}) to alive", column,row);
-                        (*life_obj).set((column,row), 1);                        
-                    }
-
-                    column += 1;
+        // Iterate over all the lines 
+        for (lno, line) in f.lines().enumerate() {
+            let line = line.unwrap();
+            if line != "" && &line[0..1] != "!" { // Ignore commented out lines 
+                for (i,c) in line.chars().enumerate() {
+                    match c {
+                        '.' => (),
+                        'O' => (*life_obj).set((i as isize,-j), 1), 
+                        _   => panic!("Invalid character {} at position {}, {} in file {}",
+                                      c, lno, i, path.display()),
+                    };
                 }
-
-                //Increment row by 1 
-                row += 1;
-                column = 0; //Reset column 
+                j += 1;
             }
+            // Empty lines represent empty rows 
+            if line  == "" { j+= 1; }
         }
-        
+    } else {
+        panic!("Could not open {}", path.display());
     }
 
+    // Run any necessary clean up (such as shrinking the hashmap)
     (*life_obj).clean_up();
 }
