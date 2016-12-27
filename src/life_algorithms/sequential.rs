@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std;
 
-use common::LifeAlgorithm;
-use common::Bounds;
+use common::{LifeAlgorithm,Bounds};
 
 pub struct Life {
     pub generation: i64,

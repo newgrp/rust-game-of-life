@@ -9,8 +9,7 @@ use std::collections::HashMap;
 use std::thread;
 use std;
 
-use common::LifeAlgorithm;
-use common::Bounds;
+use common::{LifeAlgorithm,Bounds};
 
 // Extra functionality for bounds 
 impl Bounds {
