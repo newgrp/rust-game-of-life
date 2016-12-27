@@ -21,7 +21,7 @@ pub trait LifeAlgorithm {
 	fn clear(&mut self); //Clears the entire grid
 	fn get_generation(&self) -> i64; //Get the current generation
 	fn get_bounds(&self) -> Bounds; // Gets the bounds of this life simulation
-	fn output(&self) -> &HashMap<(isize, isize), i8>; // Get immutable reference to hashmap of (x,y) points, and 0 (dead) or 1 (alive). Used to draw on screen or output as ASCII in terminal
+	fn output(&self) -> HashMap<(isize, isize), i8>; // Get a copy of the hashmap of (x,y) points, and 0 (dead) or 1 (alive). Used to draw on screen or output as ASCII in terminal
 }
 
 #[derive(Clone)]

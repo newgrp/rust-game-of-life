@@ -113,8 +113,8 @@ impl LifeAlgorithm for Life {
     fn clear(&mut self) {
         
     }
-    fn output(&self) -> &HashMap<(isize, isize), i8>{
-        &self.cells
+    fn output(&self) -> HashMap<(isize, isize), i8>{
+        self.cells.clone()
     }
 
 }
