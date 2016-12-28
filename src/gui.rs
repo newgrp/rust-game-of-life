@@ -61,6 +61,8 @@ impl GUI {
 			// Set Dead
 			life_obj.set((x,y),false);
 		}
+
+		life_obj.clean_up();
 	}
 	pub fn mouse_release(&mut self,mouse_btn:MouseButton){
 		if mouse_btn == MouseButton::Middle {
