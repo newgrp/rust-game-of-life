@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::collections::hash_set;
 use std::collections::HashMap;
 use std;
 
@@ -38,7 +40,7 @@ impl Life {
     }
 }
 
-impl LifeAlgorithm for Life {
+impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
     fn advance_by(&mut self,count:u64){
         for _ in 0..count {
             let mut cells_new: HashMap<(isize, isize), bool> = HashMap::new();
@@ -51,6 +53,7 @@ impl LifeAlgorithm for Life {
         }
         
     }
+
     fn set(&mut self,cell:(isize,isize), value: bool){
         let x = cell.0;
         let y = cell.1;
@@ -63,6 +66,7 @@ impl LifeAlgorithm for Life {
             }
         }
     }
+
     fn clean_up(&mut self){
         self.rect.x_min = std::isize::MAX;
         self.rect.x_max = std::isize::MIN;
@@ -103,17 +107,35 @@ impl LifeAlgorithm for Life {
             self.cells.remove(&(x,y));
         }
     }
+
     fn get_generation(&self) -> i64 {
         self.generation
     }
+
     fn get_bounds(&self) -> Bounds {
         self.rect.clone()
     }
+
+    fn get_value(&self, cell: (isize, isize)) -> bool {
+        if let Some(v) = self.cells.get(&cell) {
+            *v
+        } else {
+            false
+        }
+    }
+
     fn clear(&mut self) {
         self.cells.drain();
     }
-    fn output(&self) -> HashMap<(isize, isize), bool>{
-        self.cells.clone()
+
+    fn live_cells(&self) -> hash_set::IntoIter<(isize, isize)> {
+        let mut out: HashSet<(isize, isize)> = HashSet::new();
+        for (key, value) in self.cells {
+            if value {
+                out.insert(key);
+            }
+        }
+        out.into_iter()
     }
 
 }

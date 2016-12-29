@@ -11,7 +11,7 @@ for interacting with the display.
 */
 
 
-
+use std::slice::SliceConcatExt;
 use common::LifeAlgorithm;
 use piston_window::*;
 
@@ -30,10 +30,18 @@ pub struct GUI {
 impl GUI {
 	pub fn new() -> GUI {
 		GUI {
-			paused:false,zoom:1.0,offset_x:0.0,offset_y:0.0,prev_offset_x:0.0,prev_offset_y:0.0,
-			mouse_pos:[0.0,0.0],mouse_last_pos:[0.0,0.0],mouse_middle_down:false
+			paused: false,
+            zoom: 1.0,
+            offset_x: 0.0,
+            offset_y: 0.0,
+            prev_offset_x: 0.0,
+            prev_offset_y: 0.0,
+			mouse_pos: [0.0,0.0],
+            mouse_last_pos: [0.0,0.0],
+            mouse_middle_down: false
 		}
 	}
+
 	pub fn is_paused(&self) -> bool { self.paused }
 
 	pub fn key_press(&mut self, key:Key){
@@ -42,7 +50,7 @@ impl GUI {
 		}
 	}
 	
-	pub fn mouse_press(&mut self, mouse_btn:MouseButton, life_obj:&mut Box<LifeAlgorithm>, window:&mut PistonWindow){
+	pub fn mouse_press<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&mut self, mouse_btn: MouseButton, life_obj: &mut Box<L>, window: &mut PistonWindow) {
 		let w_size = window.size();
 		let window_width = w_size.width; 
 		let window_height = w_size.height;
@@ -62,14 +70,16 @@ impl GUI {
 			life_obj.set((x,y),false);
 		}
 
-		life_obj.clean_up();
+    life_obj.clean_up();
 	}
-	pub fn mouse_release(&mut self,mouse_btn:MouseButton){
+
+	pub fn mouse_release(&mut self, mouse_btn: MouseButton){
 		if mouse_btn == MouseButton::Middle {
 			//Stop moving 
 			self.mouse_middle_down = false;
 		}
 	}
+
 	pub fn mouse_move(&mut self,mot:[f64;2]){
 		self.mouse_pos =  mot;
 		if self.mouse_middle_down == false {
@@ -82,6 +92,7 @@ impl GUI {
 			self.offset_y = mot[1] - self.mouse_last_pos[1] + self.prev_offset_y;
 		}
 	}
+
 	pub fn mouse_scroll(&mut self,scroll:[f64;2]){
 		let zoom_power = 0.1;
 		if scroll[1] == 1.0 {
@@ -92,37 +103,23 @@ impl GUI {
 		}
 	}
 
-	pub fn display_ascii(&self,life_obj:&Box<LifeAlgorithm>){
+	pub fn display_ascii<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&self, life_obj: &Box<L>) {
 		// Given any object that implements LifeAlgorithm, will display the grid in the terminal
 		let bounds = life_obj.get_bounds();
-	    let cells = life_obj.output();
+	    let cells = life_obj.live_cells();
 
-		let mut y = bounds.y_max;
-        let mut x: isize;
-        let mut line: String;
-        println!("Generation {}", life_obj.get_generation());
-        while y >= bounds.y_min {
-            line = "".to_string();
-            x = bounds.x_min;
-            while x <= bounds.x_max {
-                if cells.contains_key(&(x,y)) {
-                    if cells[&(x,y)] == true {
-                        line.push_str("*");
-                    } else {
-                        line.push_str(" ");
-                    }
-                } else {
-                    line.push_str(" ");
-                }
-                x += 1;
-            }
-            println!("{}", line);
-            y -= 1;
+        let grid = vec![vec![" ".to_string(); (bounds.x_max-bounds.x_min+1) as usize]; (bounds.y_max-bounds.y_min+1) as usize];
+        for (x,y) in cells {
+            grid[(y+bounds.y_min) as usize][(x+bounds.x_min) as usize] = "*".to_string();
         }
-        println!("\n");
+        let lines: Vec<String> = vec![];
+        for chars in grid {
+            lines.push(chars.join(""));
+        }
+        println!("{}\n", lines.join("\n"));
 	}
 	
-	pub fn draw(&self,life_obj:&Box<LifeAlgorithm>,window:&mut PistonWindow, e:&Event){
+	pub fn draw<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&self, life_obj: &Box<L>, window: &mut PistonWindow, e: &Event){
 		// Given any object that implements LifeAlgorithm, will draw the grid to the screen
 		let w_size = window.size();
 		let window_width = w_size.width; 
@@ -140,7 +137,7 @@ impl GUI {
 
 	        // Get the output to draw from the life object 
 	        let bounds = life_obj.get_bounds();
-	        let cells = life_obj.output();
+	        let cells = life_obj.live_cells();
 
 	        let mut y = bounds.y_max;
             let mut x: isize;

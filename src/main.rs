@@ -2,6 +2,7 @@ extern crate piston_window;
 extern crate time;
 extern crate find_folder;
 
+use std::iter::Iterator;
 use std::env;
 use std::io::prelude::*;
 use std::io::BufReader;
@@ -162,7 +163,7 @@ fn main() {
 
 }
 
-fn read_seed_from_file(life_obj:&mut Box<LifeAlgorithm>,path:PathBuf){
+fn read_seed_from_file<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(life_obj: &mut Box<L>, path: PathBuf){
     // Takes a ref to a game-of-life object and an absolute filepath, and reads the pattern
     // Expects to find a .cells file 
     assert_eq!(path.extension().unwrap(), "cells");

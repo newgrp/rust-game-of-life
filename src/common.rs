@@ -10,18 +10,32 @@ the size of the map.
 
 */
 
-use std::collections::HashMap;
+use std::iter::Iterator;
 
-
-
-pub trait LifeAlgorithm {
-	fn advance_by(&mut self,count:u64); //Advances the simulation forward [count] step(s) 
-	fn set(&mut self,cell:(isize,isize), value: bool); //Sets the value (0 or 1, dead or alive) of a given cell (x,y)
-	fn clean_up(&mut self); //Performs any necessary clean up after setting values (for resizing the hashmap) 
-	fn clear(&mut self); //Clears the entire grid
-	fn get_generation(&self) -> i64; //Get the current generation
-	fn get_bounds(&self) -> Bounds; // Gets the bounds of this life simulation
-	fn output(&self) -> HashMap<(isize, isize), bool>; // Get a copy of the hashmap of (x,y) points, and 0 (dead) or 1 (alive). Used to draw on screen or output as ASCII in terminal
+pub trait LifeAlgorithm<I: Iterator<Item=(isize, isize)>> {
+	/// Advances the simulation forward [count] step(s) 
+    fn advance_by(&mut self,count:u64);
+	
+    /// Sets the value (false or true, dead or alive) of a given cell (x,y)
+    fn set(&mut self, cell: (isize, isize), value: bool);
+	
+    /// Performs any necessary clean up after setting values (for resizing the hashmap) 
+    fn clean_up(&mut self);
+	
+    /// Clears the entire grid
+    fn clear(&mut self);
+	
+    /// Get the current generation
+    fn get_generation(&self) -> i64;
+	
+    /// Gets the bounds of this life simulation
+    fn get_bounds(&self) -> Bounds;
+    
+    /// Gets the value of the cell (x,y) as a bool
+    fn get_value(&self, cell: (isize, isize)) -> bool;
+    
+    /// Gets an iterator over all the live cells. Used to draw on screen or output as ASCII in terminal
+	fn live_cells(&self) -> I;
 }
 
 #[derive(Clone)]

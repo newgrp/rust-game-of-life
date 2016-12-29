@@ -5,7 +5,9 @@ extern crate rand;
 use std::cmp::{min,max};
 use std::sync::Arc;
 use std::collections::HashSet;
+use std::collections::hash_set;
 use std::collections::HashMap;
+use std::collections::hash_map::Iter;
 use std::thread;
 use std;
 
@@ -35,6 +37,7 @@ impl Life {
         let num_threads = num_cpus::get() * 2; //Use twice as many threads as we have cores
         Life { generation: 0, cells: Arc::new(HashMap::new()), parts: vec![Arc::new(HashSet::new()); num_threads], rect: Bounds::new(), num_threads:num_threads }
     }
+
     fn cells_access_record(s:&str) {
         println!("Arc::get_mut(&mut self.cells) returned None at {}", s);
     }
@@ -65,8 +68,8 @@ impl Life {
     }
 }
 
-impl LifeAlgorithm for Life {
-    fn advance_by(&mut self,count:u64){
+impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
+    fn advance_by(&mut self, count:u64){
         for _ in 0..count {
             let mut thread_handles = vec![];
             for k in 0..self.num_threads {
@@ -100,9 +103,8 @@ impl LifeAlgorithm for Life {
         }
         
     }
-    fn set(&mut self,t:(isize,isize), v: bool){
-        let x = t.0;
-        let y = t.1;
+
+    fn set(&mut self, (x, y): (isize, isize), v: bool){
         if !self.cells.contains_key(&(x,y)) {
             if let Some(re) = Arc::get_mut(&mut self.cells) {
                 (*re).insert((x,y), v);
@@ -127,6 +129,7 @@ impl LifeAlgorithm for Life {
             }
         }
     }
+
     fn clean_up(&mut self){
         self.rect.x_min = std::isize::MAX;
         self.rect.x_max = std::isize::MIN;
@@ -209,12 +212,23 @@ impl LifeAlgorithm for Life {
             }
         }
     }
+
     fn get_generation(&self) -> i64 {
         self.generation
     }
+
     fn get_bounds(&self) -> Bounds {
         self.rect.clone()
     }
+
+    fn get_value(&self, cell: (isize, isize)) -> bool {
+        if let Some(v) = self.cells.get(&cell) {
+            *v
+        } else {
+            false
+        }
+    }
+
     fn clear(&mut self) {
         if let Some(re) = Arc::get_mut(&mut self.cells) {
             (*re).drain();
@@ -223,21 +237,13 @@ impl LifeAlgorithm for Life {
         }
     }
 
-
-    fn output(&self) -> HashMap<(isize, isize), bool>{
-        let mut output_map:HashMap<(isize,isize),bool> = HashMap::new();
-
-        for (key, val) in self.cells.iter() {
-            output_map.insert(key.clone(),val.clone());
+    fn live_cells(&self) -> hash_set::IntoIter<(isize, isize)> {
+        let mut out: HashSet<(isize, isize)> = HashSet::new();
+        for (key, value) in self.cells.iter() {
+            if *value {
+                out.insert(*key);
+            }
         }
-        
-        return output_map;
-
-        // This fails for some reason???
-        // match Arc::try_unwrap(self.cells.clone()) {
-        //     Ok(val) => val,
-        //     Err(arc_val) => panic!("Failed to access"),
-        // }
-        
+        out.into_iter()
     }
 }
