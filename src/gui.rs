@@ -10,8 +10,6 @@ for interacting with the display.
 
 */
 
-
-use std::slice::SliceConcatExt;
 use common::LifeAlgorithm;
 use piston_window::*;
 
@@ -50,7 +48,7 @@ impl GUI {
 		}
 	}
 	
-	pub fn mouse_press<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&mut self, mouse_btn: MouseButton, life_obj: &mut Box<L>, window: &mut PistonWindow) {
+	pub fn mouse_press<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&mut self, mouse_btn: MouseButton, life_obj: &mut L, window: &mut PistonWindow) {
 		let w_size = window.size();
 		let window_width = w_size.width; 
 		let window_height = w_size.height;
@@ -108,18 +106,18 @@ impl GUI {
 		let bounds = life_obj.get_bounds();
 	    let cells = life_obj.live_cells();
 
-        let grid = vec![vec![" ".to_string(); (bounds.x_max-bounds.x_min+1) as usize]; (bounds.y_max-bounds.y_min+1) as usize];
+        let mut grid = vec![vec![" ".to_string(); (bounds.x_max-bounds.x_min+1) as usize]; (bounds.y_max-bounds.y_min+1) as usize];
         for (x,y) in cells {
             grid[(y+bounds.y_min) as usize][(x+bounds.x_min) as usize] = "*".to_string();
         }
-        let lines: Vec<String> = vec![];
+        let mut lines: Vec<String> = vec![];
         for chars in grid {
             lines.push(chars.join(""));
         }
         println!("{}\n", lines.join("\n"));
 	}
 	
-	pub fn draw<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&self, life_obj: &Box<L>, window: &mut PistonWindow, e: &Event){
+	pub fn draw<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(&self, life_obj: &L, window: &mut PistonWindow, e: &Event){
 		// Given any object that implements LifeAlgorithm, will draw the grid to the screen
 		let w_size = window.size();
 		let window_width = w_size.width; 
@@ -136,35 +134,15 @@ impl GUI {
 	                                   .trans(-half_width,-half_height);
 
 	        // Get the output to draw from the life object 
-	        let bounds = life_obj.get_bounds();
 	        let cells = life_obj.live_cells();
 
-	        let mut y = bounds.y_max;
-            let mut x: isize;
-
-            while y >= bounds.y_min {
-                x = bounds.x_min;
-                while x <= bounds.x_max {
-                    if cells.contains_key(&(x,y)) {
-                        if cells[&(x,y)] == true {
-                            // Alive 
-                            rectangle([1.0, 0.0, 0.0, 1.0], // red
-                                      [x as f64 + half_width, y as f64 + half_height, 1.0 ,1.0], // rectangle
-                                       transform, g);
-                            
-                        } else {
-                            // Dead
-
-                        } 
-                    } else {
-                        // Dead
-
-                    }
-                    x += 1;
-                }
-                
-                y -= 1;
-            }
+	        // Iterate over all live cells and draw them 
+	        for (x,y) in cells {
+	        	rectangle([1.0, 0.0, 0.0, 1.0],
+	        			  [x as f64 + half_width, y as f64 + half_height, 1.0 ,1.0],
+	        			  transform, g);
+	        }
+	        
             //Reset transform
             c.reset();
 

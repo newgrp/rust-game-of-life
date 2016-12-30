@@ -19,52 +19,16 @@ mod gui;
 use common::LifeAlgorithm;
 use gui::GUI;
 
-fn run_life_with_gui<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(life_obj: L) {
-    ()
-}
+fn run_life_with_gui<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(mut life_obj: L, window: &mut PistonWindow, seed_file: PathBuf, font_file: PathBuf) {
+    // Read pattern from file      
+    read_seed_from_file(&mut life_obj,seed_file);
 
-fn main() {
-    // Collect any command line arguments 
-    // All args are optional. 
-    // First is which built in pattern to start with. Defaults to r_pentomino
-    // Second is which algorithm to use. Defaults to sequential. 
-    let args: Vec<String> = env::args().collect();
-    
-    let mut seed_pattern = "r_pentomino".to_string();
-    let mut mode = "sequential".to_string();
-
-    if args.len() > 1 { seed_pattern = args[1].parse().unwrap(); }
-    if args.len() > 2 { mode = args[2].parse().unwrap(); }
-
-    // Instantiate the right algorithm based on the given mode 
-    let mut life_logic:Box<LifeAlgorithm> = match mode.as_ref() {
-        "sequential" => Box::new(life_algorithms::sequential::Life::new()),
-        "parallel" => Box::new(life_algorithms::parallel::Life::new()),
-        //"hashlife" => Box::new(life_algorithms::hashlife::Life::new()),
-        _ => panic!("{:?} is not a recognized algorithm. See src/life_algorithms for a list of implemented algorithms.", mode),
-    };
-
-    // Get asset path 
-    let asset_path = Search::Parents(3).for_folder("assets").unwrap();
-    
-    // Read pattern from file       
-    let mut init_file:PathBuf = asset_path.clone(); 
-        init_file.push("game_seeds");
-        init_file.push(seed_pattern + &".cells".to_string());
-    read_seed_from_file(&mut life_logic,init_file);
-
-    
-    // Set up Piston window 
-    
-    let mut window:PistonWindow = WindowSettings::new("Rusty Game of Life - ".to_string() + &mode, [600,400]).build().unwrap();
+    // Get window events 
     let mut events = window.events();
 
-    // Get the font and create Glyphs
-    let mut font_path = asset_path.clone();
-        font_path.push("fonts");
-        font_path.push("Quicksand-Regular.ttf");
+    // Create Glyphs out of font 
     let factory = window.factory.clone();
-    let mut glyphs = Glyphs::new(font_path, factory).unwrap();
+    let mut glyphs = Glyphs::new(font_file, factory).unwrap();
 
     // Initialize GUI 
     let mut gui_obj = GUI::new();
@@ -77,7 +41,7 @@ fn main() {
     let mut do_update = true;
 
     // Capture all the events we need and call the gui functions for each
-    while let Some(e) = events.next(&mut window) {
+    while let Some(e) = events.next(window) {
 
         if let Some(Button::Keyboard(key)) = e.press_args() {
             gui_obj.key_press(key);
@@ -88,7 +52,7 @@ fn main() {
         };
 
         if let Some(Button::Mouse(mouse_btn)) = e.press_args() {
-           gui_obj.mouse_press(mouse_btn,&mut life_logic,&mut window);
+           gui_obj.mouse_press(mouse_btn,&mut life_obj,window);
         };
        
         if let Some(mot) = e.mouse_cursor_args(){
@@ -104,9 +68,9 @@ fn main() {
             do_update = true;
 
             //Draw the grid 
-            gui_obj.draw(&life_logic,&mut window,&e);
+            gui_obj.draw(&life_obj,window,&e);
             
-            let generation = life_logic.get_generation();
+            let generation = life_obj.get_generation();
             
             let average_time_text:String = format!("Average time per generation: {0:.4} seconds.", running_average_time / running_average_count);  
             let last_time_text:String = format!("Time taken for last generation: {0:.4} seconds.", time_taken);  
@@ -153,7 +117,7 @@ fn main() {
                 // Record time it takes to calculate this generation step
                 let start_time = time::precise_time_ns() as f64;
                 // Advance the simulation 
-                life_logic.advance_by(1);
+                life_obj.advance_by(1);
                 // Now calculate the time and average 
                 time_taken =  ((time::precise_time_ns() as f64 - start_time) as f64) / 1000000000.0;
                 running_average_count += 1.0;
@@ -163,10 +127,55 @@ fn main() {
 
         }
     }
+}
+
+fn main() {
+    // Collect any command line arguments 
+    // All args are optional. 
+    // First is which built in pattern to start with. Defaults to r_pentomino
+    // Second is which algorithm to use. Defaults to sequential. 
+    let args: Vec<String> = env::args().collect();
+    
+    let mut seed_pattern = "r_pentomino".to_string();
+    let mut mode = "sequential".to_string();
+
+    if args.len() > 1 { seed_pattern = args[1].parse().unwrap(); }
+    if args.len() > 2 { mode = args[2].parse().unwrap(); }
+
+    // Set up Piston window 
+    let mut window:PistonWindow = WindowSettings::new("Rusty Game of Life - ".to_string() + &mode, [600,400]).build().unwrap();
+
+    // Get asset path 
+    let asset_path = Search::Parents(3).for_folder("assets").unwrap();
+
+    // Get the seed file 
+    let mut init_file:PathBuf = asset_path.clone(); 
+        init_file.push("game_seeds");
+        init_file.push(seed_pattern + &".cells".to_string());
+
+    // Get the font file 
+    let mut font_path = asset_path.clone();
+        font_path.push("fonts");
+        font_path.push("Quicksand-Regular.ttf");
+
+    // Instantiate the right algorithm based on the given mode 
+    match mode.as_ref() {
+        "sequential" => {let life_logic = life_algorithms::sequential::Life::new();
+                         run_life_with_gui(life_logic, &mut window, init_file, font_path);
+                        },
+        "parallel" =>   {let life_logic = life_algorithms::parallel::Life::new();
+                         run_life_with_gui(life_logic, &mut window, init_file, font_path);
+                        },
+        "hashlife" =>   {let life_logic = life_algorithms::hashlife::Life::new();
+                         run_life_with_gui(life_logic, &mut window, init_file, font_path);
+                        },
+        _ => panic!("{:?} is not a recognized algorithm. See src/life_algorithms for a list of implemented algorithms.", mode),
+    }
+
 
 }
 
-fn read_seed_from_file<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(life_obj: &mut Box<L>, path: PathBuf){
+fn read_seed_from_file<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(life_obj: &mut L, path: PathBuf){
     // Takes a ref to a game-of-life object and an absolute filepath, and reads the pattern
     // Expects to find a .cells file 
     assert_eq!(path.extension().unwrap(), "cells");
