@@ -26,7 +26,7 @@ pub trait LifeAlgorithm<I: Iterator<Item=(isize, isize)>> {
     fn clear(&mut self);
 	
     /// Get the current generation
-    fn get_generation(&self) -> i64;
+    fn get_generation(&self) -> u64;
 	
     /// Gets the bounds of this life simulation
     fn get_bounds(&self) -> Bounds;
@@ -49,6 +49,14 @@ pub struct Bounds {
 impl Bounds {
     pub fn new() -> Bounds {
         Bounds { x_min: 0, x_max: 0, y_min: 0, y_max: 0 }
+    }
+
+    pub fn from_half_side(s: isize) -> Bounds {
+        assert!(s >= 0);
+        Bounds { x_min: -s,
+                 x_max:  s,
+                 y_min: -s,
+                 y_max:  s }
     }
 
     pub fn update_bounds(&mut self, x:isize, y:isize) {

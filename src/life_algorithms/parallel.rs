@@ -7,7 +7,6 @@ use std::sync::Arc;
 use std::collections::HashSet;
 use std::collections::hash_set;
 use std::collections::HashMap;
-use std::collections::hash_map::Iter;
 use std::thread;
 use std;
 
@@ -25,7 +24,7 @@ impl Bounds {
 
 #[derive(Clone)]
 pub struct Life {
-    pub generation: i64,
+    pub generation: u64,
     pub cells: Arc<HashMap<(isize, isize), bool>>,
     parts: Vec<Arc<HashSet<(isize, isize)>>>,
     rect: Bounds,
@@ -213,7 +212,7 @@ impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
         }
     }
 
-    fn get_generation(&self) -> i64 {
+    fn get_generation(&self) -> u64 {
         self.generation
     }
 

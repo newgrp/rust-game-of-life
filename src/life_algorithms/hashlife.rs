@@ -1,10 +1,9 @@
 #![allow(unused_variables,dead_code)]
 
 use std::sync::Arc;
+use std::collections::HashSet;
+use std::collections::hash_set;
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead,BufReader};
-use std;
 
 use common::{LifeAlgorithm,Bounds};
 
@@ -41,16 +40,68 @@ impl LifeNode {
     }
 
     /// Turns a square grid of same-level LifeNodes into a single LifeNode
-//    pub fn from_grid(grid: Vec<Vec<Arc<LifeNode>>>, hashes: HashMap<LifeNode, Arc<LifeNode>>) -> LifeNode {
-//        if grid.len() == 2 {
-//            LifeNode::with_components(grid[1][1],
-//                                      grid[0][1],
-//                                      grid[0][0],
-//                                      grid[1][0])
-//        } else {
-//            let temp_ne = 
-//        }
-//    }
+    pub fn from_grid(grid: Vec<Vec<Arc<LifeNode>>>,
+                     hashes: &mut HashMap<LifeNode, Arc<LifeNode>>,
+                     dead_squares: &Vec<Arc<LifeNode>>) -> LifeNode {
+        if grid.len() == 2 {
+            LifeNode::with_components(grid[1][1].clone(),
+                                      grid[0][1].clone(),
+                                      grid[0][0].clone(),
+                                      grid[1][0].clone())
+        } else if grid.len()%2 != 0 {
+            let num = grid.len();
+            let mut new: Vec<Vec<Arc<LifeNode>>> = vec![vec![]; 2*num];
+            for i in 0..num {
+                for j in 0..num {
+                    new[2*i].push(grid[i][j].get_sw());
+                    new[2*i].push(grid[i][j].get_nw());
+                    new[2*i+1].push(grid[i][j].get_se());
+                    new[2*i+1].push(grid[i][j].get_nw());
+                }
+            }
+            LifeNode::from_grid(new, hashes, dead_squares)
+        } else {
+            let num = grid.len()/2;
+            let goal = num.next_power_of_two();
+            let lvl = grid[0][0].get_level() as usize;
+            let mut grid_ne: Vec<Vec<Arc<LifeNode>>> = vec![];
+            let mut grid_nw: Vec<Vec<Arc<LifeNode>>> = vec![];
+            let mut grid_sw: Vec<Vec<Arc<LifeNode>>> = vec![];
+            let mut grid_se: Vec<Vec<Arc<LifeNode>>> = vec![];
+            for i in 0..goal-num {
+                grid_nw.push(vec![dead_squares[lvl].clone(); goal]);
+                grid_sw.push(vec![dead_squares[lvl].clone(); goal]);
+            }
+            for i in 0..num {
+                grid_ne.push(vec![]);
+                grid_nw.push(vec![]);
+                grid_sw.push(vec![]);
+                grid_se.push(vec![]);
+                for j in 0..goal-num {
+                    grid_sw[i+goal-num].push(dead_squares[lvl].clone());
+                    grid_se[i].push(dead_squares[lvl].clone());
+                }
+                for j in 0..num {
+                    grid_ne[i].push(grid[i+num][j+num].clone());
+                    grid_nw[i+goal-num].push(grid[i][j+num].clone());
+                    grid_sw[i+goal-num].push(grid[i][j].clone());
+                    grid_se[i].push(grid[i+num][j].clone());
+                }
+                for j in 0..goal-num {
+                    grid_ne[i].push(dead_squares[lvl].clone());
+                    grid_nw[i+goal-num].push(dead_squares[lvl].clone());
+                }
+            }
+            for i in 0..goal-num {
+                grid_ne.push(vec![dead_squares[lvl].clone(); goal]);
+                grid_nw.push(vec![dead_squares[lvl].clone(); goal]);
+            }
+            LifeNode::with_components(LifeNode::from_grid(grid_ne, hashes, dead_squares).do_arc(hashes),
+                                      LifeNode::from_grid(grid_nw, hashes, dead_squares).do_arc(hashes),
+                                      LifeNode::from_grid(grid_sw, hashes, dead_squares).do_arc(hashes),
+                                      LifeNode::from_grid(grid_se, hashes, dead_squares).do_arc(hashes))
+        }
+    }
 
     /// Returns the level of the node.
     pub fn get_level(&self) -> u64 {
@@ -168,6 +219,27 @@ impl LifeNode {
     fn do_arc(self, hashes: &mut HashMap<LifeNode, Arc<LifeNode>>) -> Arc<LifeNode> {
         let or_value = Arc::new(self.clone());
         hashes.entry(self).or_insert(or_value).clone()
+    }
+
+    fn find_all_live(&self, acc: &mut HashSet<(isize, isize)>, x: isize, y: isize, dead_squares: &Vec<Arc<LifeNode>>) {
+        if self.level == 0 && self.is_alive() {
+            acc.insert((x,y));
+        } else {
+            let lvl = (self.level-1) as usize;
+            let num = self.side_len()/2;
+            if self.get_ne() != dead_squares[lvl] {
+                self.get_ne().find_all_live(acc, x+num, y+num, dead_squares);
+            }
+            if self.get_nw() != dead_squares[lvl] {
+                self.get_nw().find_all_live(acc, x-num, y+num, dead_squares);
+            }
+            if self.get_sw() != dead_squares[lvl] {
+                self.get_sw().find_all_live(acc, x-num, y-num, dead_squares);
+            }
+            if self.get_se() != dead_squares[lvl] {
+                self.get_se().find_all_live(acc, x+num, y-num, dead_squares);
+            }
+        }
     }
 
     pub fn change_value(&self, x: isize, y: isize, val: bool,
@@ -360,7 +432,7 @@ impl LifeNode {
     }
 }
 
-struct Life {
+pub struct Life {
     generation: u64,
     hashes: HashMap<LifeNode, Arc<LifeNode>>,
     advanced_centers: HashMap<LifeNode, Arc<LifeNode>>,
@@ -462,26 +534,15 @@ impl Life {
         self.expand_to_fit()
     }
 
-    /// Returns the alive/dead value at the given coordinates. The southwest corner of the
-    /// northeast quadrant is assumed to be (0,0).
-    fn get_value(&self, x: isize, y: isize) -> bool {
-        let bound: isize = (2 as isize) << ((self.root.get_level()-1) as isize);
-        if x < -bound || y < -bound || x >= bound || y >= bound {
-            false
-        } else {
-            self.root.get_value(x,y)
-        }
-    }
-
     /// Toggles the value of the specified cell.
     fn toggle(&mut self, x: isize, y: isize) {
-        let new_val = !self.get_value(x, y);
-        self.set(x, y, new_val);
+        let new_val = !self.get_value((x, y));
+        self.set((x, y), new_val);
     }
 
 }
 
-impl LifeAlgorithm for Life {
+impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
     /// Returns the current generation.
     fn get_generation(&self) -> u64 {
         self.generation
@@ -492,9 +553,19 @@ impl LifeAlgorithm for Life {
         Bounds::from_half_side(self.root.side_len()/2)
     }
 
+    /// Returns the alive/dead value at the given coordinates. The southwest corner of the
+    /// northeast quadrant is assumed to be (0,0).
+    fn get_value(&self, (x,y): (isize, isize)) -> bool {
+        let bound: isize = (2 as isize) << ((self.root.get_level()-1) as isize);
+        if x < -bound || y < -bound || x >= bound || y >= bound {
+            false
+        } else {
+            self.root.get_value(x,y)
+        }
+    }
 
     /// Sets the specified cell to the specified value.
-    fn set(&mut self, x: isize, y: isize, val: bool) {
+    fn set(&mut self, (x,y): (isize, isize), val: bool) {
         let mut bound = self.root.side_len();
         while x < -bound || y < -bound || x >= bound || y >= bound {
             self.pad();
@@ -503,51 +574,52 @@ impl LifeAlgorithm for Life {
         self.root = self.root.change_value(x, y, val, &mut self.hashes);
     }
 
-//    /// Advances the game by the specified number of generations.
-//    fn advance_by(&mut self, time: u64) -> &mut Life {
-//        let mut time = time;
-//        while time > 0 {
-//            let amt = self.root.side_len()/2; // the starting side length of the live region of root
-//            if time >= amt {
-//                self.generation += amt;
-//                self.root = self.root.advanced_center(&mut self.hashes, &mut self.advanced_centers);
-//                self.expand_to_fit();
-//                time -= amt
-//            } else {
-//                let ex = 63u64 - time.leading_zeros();
-//                let bin = 2u64 << ex; // number of generations we advance by in this iteration of the loop
-//                let side = 2*bin; // the side length of the squares we will recompose root from
-//                let num = amt/side+1; // the number of squares on each side needed to tile root in these
-//                let values: Vec<Arc<LifeNode>> = vec![];
-//                for i in -num/2..num/2 {
-//                    values.push(vec![]);
-//                    for j in -num/2..num/2 {
-//                        values[i+num/2].push(LifeNode::with_components(self.root.get_chunk(ex+1, i  , j  , self.hashes),
-//                                                                       self.root.get_chunk(ex+1, i-1, j  , self.hashes),
-//                                                                       self.root.get_chunk(ex+1, i-1, j-1, self.hashes),
-//                                                                       self.root.get_chunk(ex+1, i  , j-1, self.hashes)).advanced_center(self.hashes, self.advanced_centers));
-//                    }
-//                }
-//                self.generation += bin;
-//                self.expand_to_fit();
-//                time -= bin;
-//            }
-//        }
-//        self
-//    }
+    /// Advances the game by the specified number of generations.
+    fn advance_by(&mut self, time: u64) {
+        let mut time = time;
+        while time > 0 {
+            let amt = (self.root.side_len()/2) as u64; // the starting side length of the live region of root
+            if time >= amt {
+                self.generation += amt;
+                self.root = self.root.advanced_center(&mut self.hashes, &mut self.advanced_centers);
+                self.expand_to_fit();
+                time -= amt
+            } else {
+                let ex = 63u64 - time.leading_zeros() as u64;
+                let bin = 2u64 << ex; // number of generations we advance by in this iteration of the loop
+                let side = 2*bin; // the side length of the squares we will recompose root from
+                let num = (amt/side+1) as isize; // the number of squares on each side needed to tile root in these
+                let mut values: Vec<Vec<Arc<LifeNode>>> = vec![];
+                for i in -num/2..num/2 {
+                    values.push(vec![]);
+                    for j in -num/2..num/2 {
+                        values[(i+num/2) as usize].push(LifeNode::with_components(self.root.get_chunk(ex+1, i  , j  , &mut self.hashes),
+                                                                                  self.root.get_chunk(ex+1, i-1, j  , &mut self.hashes),
+                                                                                  self.root.get_chunk(ex+1, i-1, j-1, &mut self.hashes),
+                                                                                  self.root.get_chunk(ex+1, i  , j-1, &mut self.hashes)).advanced_center(&mut self.hashes, &mut self.advanced_centers));
+                    }
+                }
+                self.root = LifeNode::from_grid(values, &mut self.hashes, &self.dead_squares).do_arc(&mut self.hashes);
+                self.generation += bin;
+                self.expand_to_fit();
+                time -= bin;
+            }
+        }
+    }
 
-    
-
-    fn output(&self) -> HashMap<(isize, isize), bool>{
-        // TODO: Figure out a way to return something the GUI can use?
+    fn live_cells(&self) -> hash_set::IntoIter<(isize, isize)> {
+        let mut cells: HashSet<(isize, isize)> = HashSet::new();
+        self.root.find_all_live(&mut cells, 0isize, 0isize, &self.dead_squares);
+        cells.into_iter()
     }
 
     fn clear(&mut self) {
-        // TODO: Clear the whole grid. Used when wanting to load a new pattern at run time
+        self.root = Life::canonical_dead(3, &mut self.dead_squares, &mut self.hashes);
+        self.generation = 0;
     }
 
     fn clean_up(&mut self){
-        //TODO: Do any clean up here? Always runs after setting a large amount of cells
+        ()
     }
 
 }

@@ -19,6 +19,9 @@ mod gui;
 use common::LifeAlgorithm;
 use gui::GUI;
 
+fn run_life_with_gui<I: Iterator<Item=(isize, isize)>, L: LifeAlgorithm<I>>(life_obj: L) {
+    ()
+}
 
 fn main() {
     // Collect any command line arguments 

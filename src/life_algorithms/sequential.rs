@@ -6,7 +6,7 @@ use std;
 use common::{LifeAlgorithm,Bounds};
 
 pub struct Life {
-    pub generation: i64,
+    pub generation: u64,
     pub cells: HashMap<(isize, isize), bool>,
     rect: Bounds,
 }
@@ -108,7 +108,7 @@ impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
         }
     }
 
-    fn get_generation(&self) -> i64 {
+    fn get_generation(&self) -> u64 {
         self.generation
     }
 
@@ -130,7 +130,7 @@ impl LifeAlgorithm<hash_set::IntoIter<(isize, isize)>> for Life {
 
     fn live_cells(&self) -> hash_set::IntoIter<(isize, isize)> {
         let mut out: HashSet<(isize, isize)> = HashSet::new();
-        for (key, value) in self.cells {
+        for (&key, &value) in &self.cells {
             if value {
                 out.insert(key);
             }
