@@ -27,6 +27,5 @@ _Sorted by priority_
 * Add instructions of how to pause/edit/scroll.
 * Document how to use commandline flags to load initial seed.
 * Add instructions on how to create a new algorithm.
-* Implement the [Hashlife](https://en.wikipedia.org/wiki/Hashlife) algorithm.
-* Try compiling it for web with Emscripten
 * Add alternative controls for zooming/panning with keyboard (so that you can still navigate without a mouse)
+* Implement the [Hashlife](https://en.wikipedia.org/wiki/Hashlife) algorithm.
